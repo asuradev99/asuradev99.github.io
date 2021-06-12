@@ -1,16 +1,32 @@
 html {
-    background-color: aqua;
-    font-size: 30px;
-    font-family: "Open Sans", sans-serif; 
+  background-color: aqua;
+  font-size: 30px;
+  font-family: "Open Sans", sans-serif;
 }
 h1 {
-    font-size: 60px;
-    text-align: left;
+  font-size: 60px;
+  text-align: left;
 }
-body {
-    width: 600px;
-    margin: 0 auto;
-    background-color: #FF9500;
-    padding: 0 20px 20px 20px;
-    border: 5px solid black;
+ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #333;
+}
+li a {
+  float: right;
+  display: block;
+  color: white;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+li a:hover:not(.active) {
+  background-color: #111;
+}
+
+.active {
+  background-color: #04aa6d;
 }

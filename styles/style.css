@@ -1,16 +1,44 @@
 html {
-  background-color: aqua;
+  background-color: rgb(100, 100, 100);
   font-size: 30px;
   font-family: "Open Sans", sans-serif;
 }
-h1 {
-  font-size: 60px;
-  text-align: left;
+#title {
+  padding-top: 100px;
+  padding-right: 30px;
+  padding-bottom: 20px;
+  padding-left: 100px;
+  max-width: 1000px;
+}
+#title img {
+  margin: 0px 30px 0px 0px;
+  display:inline;
+  width:300px;
+  height:300px;
+  float:left;
+}
+#title_text {
+  display: inline;
+  color: rgb(255, 255, 255);
+}
+#title_text h1 {
+  font-size: 2.5em;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  margin-right: 0px;
+}
+#title_text h3 {
+  margin-top: 0px;
+  margin-bottom: 0px;
+  margin-right: 50px;
+  margin-left: 50px;
 }
 ul {
+  position: fixed;
   list-style-type: none;
   margin: 0;
   padding: 0;
+  width: 99%;
   overflow: hidden;
   background-color: #333;
 }

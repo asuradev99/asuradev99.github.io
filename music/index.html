@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chord Ear Training</title>
+  <style>
+    :root { --bg:#0b0e14; --panel:#121826; --panel2:#0f1420; --text:#e7eefc; --muted:#a7b1c6; --accent:#7aa2ff; --good:#4ade80; --bad:#fb7185; --warn:#fbbf24; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; background: radial-gradient(1200px 700px at 20% 0%, #172040, var(--bg)); color: var(--text); }
+    .wrap { max-width: 1500px; margin: 0 auto; padding: 18px; }
+    header { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom: 14px; }
+    h1 { font-size: 18px; margin:0; letter-spacing: 0.3px; }
+    .row { display:grid; grid-template-columns: 1.35fr 0.8fr; gap: 14px; }
+    @media (max-width: 900px) { .row{ grid-template-columns: 1fr; } }
+
+    .card { background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.35); }
+    .card h2 { font-size: 14px; margin:0 0 10px 0; color: var(--muted); font-weight: 600; letter-spacing: 0.25px; }
+    .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:flex-end; }
+    button, select, input[type="range"] { font: inherit; }
+    button {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.03s ease, background 0.15s ease, border-color 0.15s ease;
+      user-select: none;
+    }
+    button:hover { background: rgba(255,255,255,0.09); }
+    button:active { transform: translateY(1px); }
+    button.primary { background: rgba(122,162,255,0.18); border-color: rgba(122,162,255,0.35); }
+    button.primary:hover { background: rgba(122,162,255,0.25); }
+    button.good { background: rgba(74,222,128,0.16); border-color: rgba(74,222,128,0.35); }
+    button.bad { background: rgba(251,113,133,0.16); border-color: rgba(251,113,133,0.35); }
+    button.disabled, button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .grid { display:grid; gap: 10px; }
+    .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid.cols-5 { grid-template-columns: repeat(5, 1fr); }
+    .grid.cols-6 { grid-template-columns: repeat(6, 1fr); }
+    @media (max-width: 720px) { .grid.cols-6 { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 520px) {
+      .grid.cols-4 { grid-template-columns: repeat(3, 1fr); }
+      .grid.cols-5 { grid-template-columns: repeat(3, 1fr); }
+      .grid.cols-6 { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .choice button { width:100%; text-align:left; padding: 10px 10px; border-radius: 12px; }
+    .choice button.selected { outline: 2px solid rgba(122,162,255,0.8); border-color: rgba(122,162,255,0.55); background: rgba(122,162,255,0.18); }
+    .sub { color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .status { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .pill { padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.10); background: rgba(0,0,0,0.15); color: var(--muted); font-size: 12px; }
+    .pill strong { color: var(--text); font-weight: 650; }
+    .msg { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.08); color: var(--muted); }
+    .msg.good { border-color: rgba(74,222,128,0.35); color: rgba(197,255,219,0.95); }
+    .msg.bad { border-color: rgba(251,113,133,0.35); color: rgba(255,210,218,0.95); }
+    .msg.warn { border-color: rgba(251,191,36,0.35); color: rgba(255,244,214,0.95); }
+
+    .settings { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 520px) { .settings { grid-template-columns: 1fr; } }
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .field label { font-size: 12px; color: var(--muted); }
+    select {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: var(--text);
+      padding: 10px 10px;
+      border-radius: 12px;
+    }
+    .rangeRow { display:flex; align-items:center; gap:10px; }
+    input[type="range"] { width: 100%; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 11px; padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.22); color: var(--muted); }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    footer { margin-top: 16px; text-align:center; color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Chord Ear Training</h1>
+        <div class="sub">
+          Guess: <strong>chord type</strong> + <strong>inversion</strong> + <strong>root (“key”)</strong>.
+          Audio uses Tone.js.
+        </div>
+      </div>
+      <div class="controls">
+        <button id="btnEnableAudio" class="primary">Enable Audio</button>
+        <button id="btnPlay">Play</button>
+        <button id="btnNew" class="primary">New Chord</button>
+        <button id="btnCheck" class="good">Check</button>
+        <button id="btnReveal">Reveal</button>
+      </div>
+    </header>
+
+    <div id="message" class="msg warn" style="margin-top:12px; margin-bottom:12px;">
+      Click <strong>Enable Audio</strong> once (browser requirement), then press <strong>Play</strong>.
+      Shortcuts: <span class="kbd">Space</span> play, <span class="kbd">N</span> new chord, <span class="kbd">Enter</span> check, <span class="kbd">R</span> reveal.
+    </div>
+
+    <div class="row">
+      <section class="card">
+        <h2>Choices</h2>
+
+        <div class="grid" style="gap:14px;">
+          <div>
+            <div class="status" style="margin-bottom:8px;">
+              <div class="pill">Chord Type</div>
+              <div class="sub">Click a chord type button. (Now includes triads, suspended, 7ths, and 9ths.)</div>
+            </div>
+            <div id="chordTypeGrid" class="grid cols-4 choice"></div>
+          </div>
+
+          <div>
+            <div class="status" style="margin-bottom:8px;">
+              <div class="pill">Inversion</div>
+              <div class="sub">Triads/sus: Root/1st/2nd. Sevenths: Root/1st/2nd/3rd. Ninths: Root/1st/2nd/3rd/4th.</div>
+            </div>
+            <div id="invGrid" class="grid cols-5 choice"></div>
+          </div>
+
+          <div>
+            <div class="status" style="margin-bottom:8px;">
+              <div class="pill">Root (“Key”)</div>
+              <div class="sub">Buttons show enharmonic equivalents like <span class="kbd">C#/Db</span>.</div>
+            </div>
+            <div id="rootGrid" class="grid cols-6 choice"></div>
+          </div>
+        </div>
+
+        </section>
+
+      <aside class="card">
+        <h2>Settings & Stats</h2>
+
+        <div class="settings">
+          <div class="field">
+            <label for="selPlayback">Playback</label>
+            <select id="selPlayback">
+              <option value="block">Block chord (all notes together)</option>
+              <option value="arp">Arpeggiate up</option>
+              <option value="arpDown">Arpeggiate down</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Tempo (for arpeggiation)</label>
+            <div class="rangeRow">
+              <input id="rngTempo" type="range" min="40" max="220" value="110" />
+              <div class="pill"><strong id="tempoVal">110</strong> BPM</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Chord Duration</label>
+            <div class="rangeRow">
+              <input id="rngDur" type="range" min="400" max="2400" value="1200" />
+              <div class="pill"><strong id="durVal">1200</strong> ms</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Octave Range (root)</label>
+            <div class="rangeRow">
+              <input id="rngOct" type="range" min="2" max="5" value="3" />
+              <div class="pill">Oct <strong id="octVal">3</strong>–<strong id="octVal2">4</strong></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Chord Categories</label>
+            <div id="kindButtons" class="grid cols-4 choice"></div>
+            <div class="sub">Toggle categories to control which chord types are selectable and which are tested.</div>
+          </div>
+
+          <div class="field">
+            <label>Test Inversion</label>
+            <button id="btnInvToggle" class="primary">Inversion: ON</button>
+            <div class="sub">If OFF, inversion is not required and is ignored when grading.</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;"> display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="pill">Score: <strong id="score">0</strong>/<strong id="total">0</strong></div>
+          <div class="pill">Streak: <strong id="streak">0</strong></div>
+          <div class="pill">Last: <strong id="lastAns">—</strong></div>
+        </div>
+
+        <div class="sub" style="margin-top:12px;">
+          Instrument: <strong>Tone.Sampler</strong> using the Salamander piano samples.
+        </div>
+      </aside>
+    </div>
+
+    <footer>Created with ChatGPT</footer>
+  </div>
+
+  <!-- Tone.js from cdnjs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.3.5/Tone.js"></script>
+
+  <script>
+    // ------------------------------
+    // 1) Theory data
+    // ------------------------------
+    const CHORD_TYPES = [
+      // Triads
+      { id:"maj",   name:"Major Triad",          kind:"triad",  intervals:[0,4,7] },
+      { id:"min",   name:"Minor Triad",          kind:"triad",  intervals:[0,3,7] },
+      { id:"aug",   name:"Augmented Triad",      kind:"triad",  intervals:[0,4,8] },
+      { id:"dim",   name:"Diminished Triad",     kind:"triad",  intervals:[0,3,6] },
+
+      // Suspended (triad-sized)
+      { id:"sus2",  name:"Suspended 2nd (sus2)", kind:"sus",    intervals:[0,2,7] },
+      { id:"sus4",  name:"Suspended 4th (sus4)", kind:"sus",    intervals:[0,5,7] },
+
+      // Seventh chords
+      { id:"dom7",  name:"Dominant 7th",         kind:"7th",    intervals:[0,4,7,10] },
+      { id:"maj7",  name:"Major 7th",            kind:"7th",    intervals:[0,4,7,11] },
+      { id:"min7",  name:"Minor 7th",            kind:"7th",    intervals:[0,3,7,10] },
+      { id:"minmaj7", name:"Minor-major 7th",    kind:"7th",    intervals:[0,3,7,11] },
+      { id:"hdim7", name:"Half-diminished 7th",  kind:"7th",    intervals:[0,3,6,10] },
+      { id:"dim7",  name:"Diminished 7th",       kind:"7th",    intervals:[0,3,6,9] },
+      { id:"7sus4", name:"Dominant 7sus4",       kind:"7th",    intervals:[0,5,7,10] },
+
+      // Ninth chords (5-note chords)
+      { id:"dom9",    name:"Dominant 9th",          kind:"9th", intervals:[0,4,7,10,14] },
+      { id:"dom7b9",  name:"Dominant 7(b9)",        kind:"9th", intervals:[0,4,7,10,13] },
+      { id:"dom7#9",  name:"Dominant 7(#9)",        kind:"9th", intervals:[0,4,7,10,15] },
+      { id:"maj9",    name:"Major 9th",             kind:"9th", intervals:[0,4,7,11,14] },
+      { id:"min9",    name:"Minor 9th",             kind:"9th", intervals:[0,3,7,10,14] },
+      { id:"minmaj9", name:"Minor-major 9th",       kind:"9th", intervals:[0,3,7,11,14] },
+      { id:"hdim9",   name:"Half-diminished 9th",   kind:"9th", intervals:[0,3,6,10,14] },
+      { id:"dim9",    name:"Diminished 9th",        kind:"9th", intervals:[0,3,6,9,14] },
+      { id:"aug9",    name:"Augmented 9th (7#5(9))",kind:"9th", intervals:[0,4,8,10,14] },
+      { id:"sus9",    name:"9sus4",                 kind:"9th", intervals:[0,5,7,10,14] }
+    ];
+
+    const INV = [
+      { id:0, name:"Root" },
+      { id:1, name:"1st" },
+      { id:2, name:"2nd" },
+      { id:3, name:"3rd" },
+      { id:4, name:"4th" }
+    ];
+
+    // We keep separate name tables for: (a) enharmonic labels on buttons, (b) MIDI->note names for sampler.
+    const NOTE_NAMES = {
+      sharps: ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"],
+      flats:  ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"]
+    };
+
+    // ------------------------------
+    // 2) UI state
+    // ------------------------------
+    const state = {
+      audioEnabled: false,
+      samplesReady: false,
+      playback: "block",
+      tempo: 110,
+      durMs: 1200,
+      rootOct: 3,
+      kinds: { triad: true, sus: true, "7th": true, "9th": true },
+      testInversion: true,
+
+      current: null,
+      guess: { chordTypeId: null, inversion: null, rootPc: null },
+
+      stats: { correct: 0, total: 0, streak: 0, last: "—" },
+
+      nextChordTimer: null,
+      pendingUnlockHooked: false,
+
+      // Race-condition guards:
+      playToken: 0,           // increments to invalidate pending async work
+      transitioning: false,   // UI is in the middle of a "check -> new chord" transition
+      audioStarting: null,    // Promise guard to prevent concurrent enableAudio()
+      useSynth: false       // fallback if sampler fails to load
+    };
+
+    // ------------------------------
+    // 3) DOM helpers
+    // ------------------------------
+    const $ = (id) => document.getElementById(id);
+
+    function setMessage(text, kind="warn") {
+      const el = $("message");
+      el.className = "msg " + kind;
+      el.innerHTML = text;
+    }
+
+    function syncAudioButton() {
+      const b = $("btnEnableAudio");
+      if (!b) return;
+      if (state.audioEnabled) {
+        b.textContent = "Audio Enabled";
+        b.disabled = true;
+        b.classList.add("good");
+      } else {
+        b.textContent = "Enable Audio";
+        b.disabled = false;
+        b.classList.remove("good");
+      }
+    }
+
+    function renderInvToggle() {
+      const b = $("btnInvToggle");
+      if (!b) return;
+      b.textContent = state.testInversion ? "Inversion: ON" : "Inversion: OFF";
+      b.classList.toggle("good", !!state.testInversion);
+      b.classList.toggle("bad", !state.testInversion);
+    }
+
+    function fmtRoot(pc) {
+      const s = NOTE_NAMES.sharps[pc];
+      const f = NOTE_NAMES.flats[pc];
+      return (s === f) ? s : `${s}/${f}`;
+    }
+
+    function chordTypeById(id) {
+      return CHORD_TYPES.find(x => x.id === id);
+    }
+
+    function chordTypeShortLabel(ct) {
+      // Short labels to keep the UI compact; full name appears on hover (title).
+      switch (ct.id) {
+        // triads
+        case "maj": return "Maj";
+        case "min": return "Min";
+        case "aug": return "Aug";
+        case "dim": return "Dim";
+        // suspended
+        case "sus2": return "Sus2";
+        case "sus4": return "Sus4";
+        // sevenths
+        case "dom7": return "7";
+        case "maj7": return "Maj7";
+        case "min7": return "m7";
+        case "minmaj7": return "mMaj7";
+        case "hdim7": return "ø7";
+        case "dim7": return "o7";
+        case "7sus4": return "7sus4";
+        // ninths
+        case "dom9": return "9";
+        case "dom7b9": return "7b9";
+        case "dom7#9": return "7#9";
+        case "maj9": return "Maj9";
+        case "min9": return "m9";
+        case "minmaj9": return "mMaj9";
+        case "hdim9": return "ø9";
+        case "dim9": return "o9";
+        case "aug9": return "Aug9";
+        case "sus9": return "9sus4";
+        default: return ct.name;
+      }
+    }
+
+    function kindAllowsInv(kind, inv) {
+      if (kind === "triad" || kind === "sus") return inv >= 0 && inv <= 2;
+      if (kind === "7th") return inv >= 0 && inv <= 3;
+      if (kind === "9th") return inv >= 0 && inv <= 4;
+      return inv >= 0 && inv <= 3;
+    }
+
+    function selectedKindList() {
+      const out = [];
+      if (state.kinds.triad) out.push("triad");
+      if (state.kinds.sus) out.push("sus");
+      if (state.kinds["7th"]) out.push("7th");
+      if (state.kinds["9th"]) out.push("9th");
+      return out;
+    }
+
+    function allowedChordTypes() {
+      const enabled = new Set(selectedKindList());
+      return CHORD_TYPES.filter(x => enabled.has(x.kind));
+    }
+
+    function pc(n) {
+      return ((n % 12) + 12) % 12;
+    }
+
+    function pitchClassSetFromMidi(midiNotes) {
+      return new Set(midiNotes.map(m => pc(m)));
+    }
+
+    function setUIBusy(busy) {
+      state.transitioning = busy;
+      $("btnCheck").disabled = busy;
+      $("btnNew").disabled = busy;
+      $("btnPlay").disabled = busy;
+      $("btnReveal").disabled = busy;
+      // Keep enable-audio clickable (must be a direct user gesture).
+      const en = $("btnEnableAudio");
+      if (en) en.disabled = state.audioEnabled;
+    }
+
+    function cancelPendingNext() {
+      if (state.nextChordTimer != null) {
+        clearTimeout(state.nextChordTimer);
+        state.nextChordTimer = null;
+      }
+      // Invalidate any already-scheduled async callback.
+      state.playToken += 1;
+      setUIBusy(false);
+    }
+
+    // ------------------------------
+    // 4) Render choice grids
+    // ------------------------------
+    function renderChordTypeGrid() {
+      const grid = $("chordTypeGrid");
+      grid.innerHTML = "";
+      const allowed = new Set(allowedChordTypes().map(x => x.id));
+
+      for (const ct of CHORD_TYPES) {
+        const btn = document.createElement("button");
+        btn.textContent = chordTypeShortLabel(ct);
+        btn.title = ct.name;
+        btn.dataset.id = ct.id;
+        btn.disabled = !allowed.has(ct.id);
+
+        btn.onclick = () => {
+          if (btn.disabled || state.transitioning) return;
+          state.guess.chordTypeId = ct.id;
+          renderAllSelections();
+          const kind = ct.kind;
+          if (state.testInversion && (state.guess.inversion == null || !kindAllowsInv(kind, state.guess.inversion))) {
+            state.guess.inversion = 0;
+            renderAllSelections();
+          }
+        };
+
+        grid.appendChild(btn);
+      }
+    }
+
+    function renderInvGrid() {
+      const grid = $("invGrid");
+      grid.innerHTML = "";
+
+      const inversionEnabled = !!state.testInversion;
+
+      let effectiveKind = null;
+      if (state.guess.chordTypeId) {
+        const ct = chordTypeById(state.guess.chordTypeId);
+        effectiveKind = ct ? ct.kind : null;
+      } else {
+        const kinds = selectedKindList();
+        // If exactly one category is enabled, we can disable invalid inversions.
+        if (kinds.length === 1) effectiveKind = kinds[0];
+      }
+
+      for (const inv of INV) {
+        const btn = document.createElement("button");
+        btn.textContent = inv.name;
+        btn.title = inv.name + " inversion";
+        btn.dataset.id = String(inv.id);
+
+        const enabled = (effectiveKind === null) ? true : kindAllowsInv(effectiveKind, inv.id);
+        btn.disabled = (!inversionEnabled) || (!enabled);
+
+        btn.onclick = () => {
+          if (btn.disabled || state.transitioning) return;
+          if (!state.testInversion) return;
+          state.guess.inversion = inv.id;
+          renderAllSelections();
+        };
+        grid.appendChild(btn);
+      }
+    }
+
+    function renderRootGrid() {
+      const grid = $("rootGrid");
+      grid.innerHTML = "";
+      for (let i = 0; i < 12; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = fmtRoot(i);
+        btn.dataset.id = String(i);
+        btn.onclick = () => {
+          if (state.transitioning) return;
+          state.guess.rootPc = i;
+          renderAllSelections();
+        };
+        grid.appendChild(btn);
+      }
+    }
+
+    function renderAllSelections() {
+      for (const btn of $("chordTypeGrid").querySelectorAll("button")) {
+        const id = btn.dataset.id;
+        btn.classList.toggle("selected", state.guess.chordTypeId === id);
+      }
+
+      for (const btn of $("invGrid").querySelectorAll("button")) {
+        const inv = Number(btn.dataset.id);
+        btn.classList.toggle("selected", state.testInversion && state.guess.inversion === inv);
+      }
+
+      for (const btn of $("rootGrid").querySelectorAll("button")) {
+        const r = Number(btn.dataset.id);
+        btn.classList.toggle("selected", state.guess.rootPc === r);
+        btn.textContent = fmtRoot(r);
+      }
+
+      $("score").textContent = String(state.stats.correct);
+      $("total").textContent = String(state.stats.total);
+      $("streak").textContent = String(state.stats.streak);
+      $("lastAns").textContent = state.stats.last;
+    }
+
+    // ------------------------------
+    // 5) Chord generation
+    // ------------------------------
+    function randomInt(a, bInclusive) {
+      return a + Math.floor(Math.random() * (bInclusive - a + 1));
+    }
+
+    function pcToMidi(rootPc, octave) {
+      return (octave + 1) * 12 + rootPc;
+    }
+
+    function buildChordMidi(rootMidi, intervals, inversion) {
+      const notes = intervals.map(semi => rootMidi + semi).sort((a,b)=>a-b);
+      for (let i = 0; i < inversion; i++) notes[i] += 12;
+      notes.sort((a,b)=>a-b);
+
+      // IMPORTANT: The average must be recomputed after transposing notes.
+      // The previous version computed avg once and could enter an infinite loop,
+      // freezing the page.
+      const mean = () => notes.reduce((s,x)=>s+x,0) / notes.length;
+
+      // Keep within a comfortable register; hard-cap iterations to guarantee no hang.
+      for (let k = 0; k < 16 && mean() > 74; k++) {
+        for (let i=0;i<notes.length;i++) notes[i] -= 12;
+      }
+      for (let k = 0; k < 16 && mean() < 52; k++) {
+        for (let i=0;i<notes.length;i++) notes[i] += 12;
+      }
+
+      return notes;
+    }
+
+    function newChord() {
+      const pool = allowedChordTypes();
+      if (pool.length === 0) {
+        setMessage("Select at least one chord category.", "warn");
+        return;
+      }
+      const ct = pool[randomInt(0, pool.length - 1)];
+      const invMax = (ct.kind === "triad" || ct.kind === "sus") ? 2 : (ct.kind === "9th" ? 4 : 3);
+      const inversion = randomInt(0, invMax);
+
+      const rootPc = randomInt(0, 11);
+      const octave = randomInt(state.rootOct, state.rootOct + 1);
+      const rootMidi = pcToMidi(rootPc, octave);
+
+      const midiNotes = buildChordMidi(rootMidi, ct.intervals, inversion);
+      state.current = { chordTypeId: ct.id, inversion, rootPc, rootMidi, midiNotes };
+
+      state.guess = { chordTypeId: null, inversion: null, rootPc: null };
+      renderInvGrid();
+      renderAllSelections();
+
+      // Keep the previous correct/incorrect message visible until the user explicitly picks a new chord.
+      setMessage("New chord ready.", "warn");
+      renderKindButtons();
+    }
+
+    function answerString(cur) {
+      const ct = chordTypeById(cur.chordTypeId);
+      const invName = INV.find(x => x.id === cur.inversion).name;
+      const invPart = state.testInversion ? ` • ${invName} inversion` : "";
+      if (ct.id === "dim7") {
+        const pcs = Array.from(pitchClassSetFromMidi(cur.midiNotes)).sort((a,b)=>a-b);
+        const names = pcs.map(fmtRoot).join("–");
+        return `${names} • ${ct.name} (symmetric)${invPart}`;
+      }
+      return `${fmtRoot(cur.rootPc)} • ${ct.name}${invPart}`;
+    }
+
+    // ------------------------------
+    // 6) Audio (Tone.js) — Sampler
+    // ------------------------------
+    let sampler = null;
+    let poly = null; // fallback synth (always available)
+    let master = null; // simple final gain -> destination
+    let reverb = null; // (optional)
+    let limiter = null; // (optional)
+
+    function hookUnlockOnce() {
+      if (state.pendingUnlockHooked) return;
+      state.pendingUnlockHooked = true;
+
+      const handler = async () => {
+        await enableAudio(false);
+        // Tiny audible smoke test to confirm the context is actually running.
+        try {
+          if (poly) poly.triggerAttackRelease("C5", 0.08, Tone.now(), 0.6);
+        } catch {}
+        syncAudioButton();
+      };
+
+      window.addEventListener("pointerdown", handler, { once: true });
+      window.addEventListener("keydown", handler, { once: true });
+    }
+
+    async function enableAudio(silent=false) {
+      if (state.audioEnabled) return true;
+      if (state.audioStarting) return await state.audioStarting;
+
+      state.audioStarting = (async () => {
+        if (!window.Tone) {
+          if (!silent) setMessage("Tone.js failed to load. Check your internet connection (CDN).", "bad");
+          return false;
+        }
+
+        try {
+          // Browsers may reject this until a user gesture.
+          await Tone.start();
+          // Some environments still leave the context suspended; resume explicitly.
+          try { await Tone.getContext().resume(); } catch {}
+        } catch (e) {
+          hookUnlockOnce();
+          if (!silent) setMessage("Your browser blocked auto-audio. Click anywhere once, then try Play again.", "warn");
+          return false;
+        }
+
+        // Create the audio graph once.
+        // Keep this as simple as possible to avoid silent graphs.
+        try {
+          Tone.Destination.mute = false;
+          Tone.Destination.volume.value = 0;
+          master = new Tone.Gain(0.9).toDestination();
+
+          sampler = new Tone.Sampler({
+            urls: {
+              C4: "C4.mp3",
+              "D#4": "Ds4.mp3",
+              "F#4": "Fs4.mp3",
+              A4: "A4.mp3",
+            },
+            release: 1,
+            baseUrl: "https://tonejs.github.io/audio/salamander/",
+          }).connect(master);
+
+          poly = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "triangle" },
+            envelope: { attack: 0.01, decay: 0.2, sustain: 0.15, release: 0.8 }
+          }).connect(master);
+
+          state.audioEnabled = true;
+        } catch (e) {
+          console.error("Audio graph init failed:", e);
+          state.audioEnabled = false;
+          if (!silent) setMessage("Audio init failed (see console).", "bad");
+          return false;
+        }
+
+        // Start loading sample buffers.
+        state.samplesReady = false;
+        Tone.loaded().then(() => {
+          state.samplesReady = true;
+        }).catch(() => {
+          // If Tone.loaded rejects for any reason, keep samplesReady=false.
+          state.samplesReady = false;
+        });
+
+        if (!silent) {
+          const ctxState = (Tone && Tone.getContext && Tone.getContext().state) ? Tone.getContext().state : "?";
+          setMessage("Audio enabled. (context: <strong>" + ctxState + "</strong>)", "good");
+        }
+        syncAudioButton();
+        return true;
+      })();
+
+      try {
+        return await state.audioStarting;
+      } finally {
+        // Clear the guard regardless of success/failure.
+        state.audioStarting = null;
+      }
+    }
+
+    function midiToToneNote(midi) {
+      const p = pc(midi);
+      const octave = Math.floor(midi / 12) - 1;
+      // Use sharps for internal note naming; UI shows enharmonics separately.
+      return NOTE_NAMES.sharps[p] + String(octave);
+    }
+
+    async function ensureSamplesReady() {
+      // If we already decided to use the synth fallback, don't block on samples.
+      if (state.useSynth) return;
+      if (state.samplesReady) return;
+      // If sample loading stalls (network/cors/etc), we fall back to PolySynth.
+      setMessage("Loading piano samples…", "warn");
+      try {
+        await Promise.race([
+          Tone.loaded(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error("Tone.loaded timeout")), 6000))
+        ]);
+        state.samplesReady = true;
+        state.useSynth = false;
+      } catch (e) {
+        console.warn("Sampler samples did not finish loading; using synth fallback.", e);
+        state.samplesReady = false;
+        state.useSynth = true;
+        setMessage(
+          "Using synth fallback (piano samples didn't load). If you want the piano, check your connection and reload.",
+          "warn"
+        );
+      }
+    }
+
+    async function playCurrentChord() {
+      if (!state.current) newChord();
+
+      if (!state.audioEnabled) {
+        syncAudioButton();
+        setMessage(
+          "Your browser requires a user gesture to start audio. Click <strong>Enable Audio</strong>, then press <strong>Play</strong>.",
+          "warn"
+        );
+        return;
+      }
+
+      // Defensive: if something went wrong during audio init.
+      if (!sampler && !poly) {
+        setMessage("Audio engine not ready yet. Try clicking Play again.", "warn");
+        return;
+      }
+
+      await ensureSamplesReady();
+
+      const now = Tone.now();
+      const notes = state.current.midiNotes.map(midiToToneNote);
+      const durSec = state.durMs / 1000;
+
+      const instrument = (sampler && !state.useSynth) ? sampler : poly;
+      if (!instrument) return;
+
+      if (state.playback === "block") {
+        instrument.triggerAttackRelease(notes, durSec, now, 0.9);
+        return;
+      }
+
+      const bpm = state.tempo;
+      const step = 60 / bpm;
+      const seq = (state.playback === "arpDown") ? notes.slice().reverse() : notes.slice();
+
+      const noteLen = Math.min(0.45, step * 0.9);
+      seq.forEach((n, i) => {
+        instrument.triggerAttackRelease(n, noteLen, now + i * step, 0.9);
+      });
+
+      const endT = now + seq.length * step;
+      instrument.triggerAttackRelease(notes, Math.min(0.35, durSec * 0.3), endT, 0.55);
+    }
+
+    // ------------------------------
+    // 7) Checking logic
+    // ------------------------------
+    function isGuessCorrect() {
+      const cur = state.current;
+      if (!cur) return false;
+
+      const guessCtId = state.guess.chordTypeId;
+      const guessInv = state.guess.inversion;
+      const guessRootPc = state.guess.rootPc;
+
+      // Special-case: dim7 is symmetric (multiple roots produce the same pitch-class set).
+      if (cur.chordTypeId === "dim7") {
+        if (guessCtId !== "dim7") return false;
+        if (guessRootPc == null) return false;
+
+        if (state.testInversion) {
+          if (guessInv == null || guessInv < 0 || guessInv > 3) return false;
+          if (guessInv !== cur.inversion) return false;
+        }
+
+        const pcs = pitchClassSetFromMidi(cur.midiNotes);
+        return pcs.has(guessRootPc);
+      }
+
+      if (guessCtId !== cur.chordTypeId) return false;
+      if (guessRootPc !== cur.rootPc) return false;
+      if (state.testInversion) return guessInv === cur.inversion;
+      return true;
+    }
+
+    function scheduleNextChordAndPlay() {
+      // Clear any previous pending transition.
+      if (state.nextChordTimer != null) {
+        clearTimeout(state.nextChordTimer);
+        state.nextChordTimer = null;
+      }
+
+      // Token-based invalidation: if anything else triggers a new action,
+      // this scheduled callback becomes a no-op.
+      const myToken = ++state.playToken;
+
+      setUIBusy(true);
+
+      state.nextChordTimer = window.setTimeout(async () => {
+        // If this callback is stale, do nothing.
+        if (myToken !== state.playToken) return;
+
+        state.nextChordTimer = null;
+
+        try {
+          newChord();
+          if (state.audioEnabled) {
+            await playCurrentChord();
+            if (myToken !== state.playToken) return;
+            setMessage("New chord played. Make your guess.", "warn");
+          } else {
+            syncAudioButton();
+            setMessage("New chord generated. Click <strong>Enable Audio</strong>, then press <strong>Play</strong>.", "warn");
+          }
+        } catch (e) {
+          console.error("Error during next-chord transition:", e);
+          if (myToken !== state.playToken) return;
+          setMessage(
+            "Something went wrong while generating/playing the next chord. Try pressing <strong>New Chord</strong>.<br/><span class=\"sub\">(Details in console.)</span>",
+            "bad"
+          );
+        } finally {
+          // Always re-enable controls unless another action has superseded this one.
+          if (myToken === state.playToken) setUIBusy(false);
+        }
+      }, 900);
+    }
+
+    function checkGuess() {
+      if (state.transitioning) return;
+      if (!state.current) newChord();
+
+      const missing = [];
+      if (!state.guess.chordTypeId) missing.push("Chord Type");
+      if (state.testInversion && state.guess.inversion == null) missing.push("Inversion");
+      if (state.guess.rootPc == null) missing.push("Root");
+
+      if (missing.length) {
+        setMessage("Missing: <strong>" + missing.join(", ") + "</strong>.", "warn");
+        return;
+      }
+
+      const ok = isGuessCorrect();
+      state.stats.total += 1;
+
+      const ans = answerString(state.current);
+      state.stats.last = ans;
+
+      if (ok) {
+        state.stats.correct += 1;
+        state.stats.streak += 1;
+        if (state.current.chordTypeId === "dim7" && state.guess.rootPc !== state.current.rootPc) {
+          setMessage("✅ Correct! (Dim7 is symmetric; multiple roots are equivalent.)<br/>Answer: <strong>" + ans + "</strong>", "good");
+        } else {
+          setMessage("✅ Correct! Answer: <strong>" + ans + "</strong>", "good");
+        }
+      } else {
+        state.stats.streak = 0;
+        const ctGuess = state.guess.chordTypeId ? chordTypeById(state.guess.chordTypeId).name : "—";
+        const invGuess = (state.testInversion && state.guess.inversion != null)
+          ? (INV.find(x=>x.id===state.guess.inversion).name + " inversion")
+          : null;
+        const rootGuess = (state.guess.rootPc != null) ? fmtRoot(state.guess.rootPc) : "—";
+
+        setMessage(
+          "❌ Incorrect.<br/>" +
+          "Your guess: <strong>" + rootGuess + " • " + ctGuess + (invGuess ? (" • " + invGuess) : "") + "</strong><br/>" +
+          "Correct: <strong>" + ans + "</strong>",
+          "bad"
+        );
+      }
+
+      renderAllSelections();
+      
+    }
+
+    function reveal() {
+      if (state.transitioning) return;
+      if (!state.current) newChord();
+      const ans = answerString(state.current);
+      state.stats.last = ans;
+      setMessage("Answer: <strong>" + ans + "</strong>", "warn");
+      renderAllSelections();
+    }
+
+    // ------------------------------
+    // 8) Wire up controls
+    // ------------------------------
+    function renderKindButtons() {
+      const grid = $("kindButtons");
+      if (!grid) return;
+      grid.innerHTML = "";
+
+      const defs = [
+        { key: "triad", label: "Triads" },
+        { key: "sus", label: "Suspended" },
+        { key: "7th", label: "7ths" },
+        { key: "9th", label: "9ths" },
+      ];
+
+      const enabledCount = () => selectedKindList().length;
+
+      for (const d of defs) {
+        const btn = document.createElement("button");
+        btn.textContent = d.label;
+        btn.dataset.kind = d.key;
+        btn.classList.toggle("selected", !!state.kinds[d.key]);
+
+        btn.onclick = () => {
+          if (state.transitioning) return;
+          const wasOn = !!state.kinds[d.key];
+          // Prevent turning off the last enabled category.
+          if (wasOn && enabledCount() === 1) {
+            setMessage("At least one chord category must be enabled.", "warn");
+            return;
+          }
+          state.kinds[d.key] = !wasOn;
+
+          // If current chord is now disallowed, generate a new one.
+          if (state.current) {
+            const curKind = chordTypeById(state.current.chordTypeId)?.kind;
+            if (curKind && !selectedKindList().includes(curKind)) {
+              newChord();
+            }
+          }
+
+          // If currently selected chord type is now disallowed, clear it.
+          if (state.guess.chordTypeId) {
+            const gKind = chordTypeById(state.guess.chordTypeId)?.kind;
+            if (gKind && !selectedKindList().includes(gKind)) {
+              state.guess.chordTypeId = null;
+            }
+          }
+
+          renderKindButtons();
+          renderChordTypeGrid();
+          renderInvGrid();
+          renderAllSelections();
+        };
+
+        grid.appendChild(btn);
+      }
+    }
+
+    function wire() {
+      $("btnEnableAudio").onclick = async () => {
+        // Must be a direct click to satisfy browser autoplay policy.
+        const ok = await enableAudio(false);
+        if (!ok) return;
+        // Audible smoke test.
+        try {
+          if (poly) poly.triggerAttackRelease("C5", 0.12, Tone.now(), 0.7);
+        } catch {}
+        syncAudioButton();
+        setMessage("Audio enabled. Press <strong>Play</strong>.", "good");
+      };
+
+      $("btnPlay").onclick = () => {
+        if (state.transitioning) return;
+        playCurrentChord();
+      };
+
+      $("btnNew").onclick = () => {
+        cancelPendingNext();
+        newChord();
+      };
+
+      $("btnCheck").onclick = () => {
+        // Defensive: prevent rapid double-presses from stacking transitions.
+        if (state.transitioning) return;
+        checkGuess();
+      };
+
+      $("btnReveal").onclick = () => {
+        if (state.transitioning) return;
+        reveal();
+      };
+
+      const invT = $("btnInvToggle");
+      if (invT) {
+        invT.onclick = () => {
+          if (state.transitioning) return;
+          state.testInversion = !state.testInversion;
+          if (!state.testInversion) state.guess.inversion = null;
+          renderInvToggle();
+          renderInvGrid();
+          renderAllSelections();
+        };
+      }
+
+      $("selPlayback").onchange = (e) => { state.playback = e.target.value; };
+      
+      $("rngTempo").oninput = (e) => {
+        state.tempo = Number(e.target.value);
+        $("tempoVal").textContent = String(state.tempo);
+      };
+      $("rngDur").oninput = (e) => {
+        state.durMs = Number(e.target.value);
+        $("durVal").textContent = String(state.durMs);
+      };
+      $("rngOct").oninput = (e) => {
+        state.rootOct = Number(e.target.value);
+        $("octVal").textContent = String(state.rootOct);
+        $("octVal2").textContent = String(state.rootOct + 1);
+      };
+
+      window.addEventListener("keydown", (ev) => {
+        if (ev.target && ["INPUT","SELECT","TEXTAREA"].includes(ev.target.tagName)) return;
+        if (state.transitioning) return;
+
+        if (ev.code === "Space") { ev.preventDefault(); playCurrentChord(); }
+        else if (ev.key === "n" || ev.key === "N") { cancelPendingNext(); newChord(); }
+        else if (ev.key === "Enter") { checkGuess(); }
+        else if (ev.key === "r" || ev.key === "R") { reveal(); }
+      });
+    }
+
+    // ------------------------------
+    // 9) Init
+    // ------------------------------
+    async function init() {
+      $("tempoVal").textContent = String(state.tempo);
+      $("durVal").textContent = String(state.durMs);
+      $("octVal").textContent = String(state.rootOct);
+      $("octVal2").textContent = String(state.rootOct + 1);
+
+      renderChordTypeGrid();
+      renderInvGrid();
+      renderRootGrid();
+      renderKindButtons();
+      renderInvToggle();
+      renderAllSelections();
+
+      newChord();
+      wire();
+
+      // Do NOT auto-start audio on load; browsers block AudioContext until a user gesture.
+      syncAudioButton();
+      hookUnlockOnce();
+      setMessage("Click <strong>Enable Audio</strong> once (browser requirement), then press <strong>Play</strong>.", "warn");
+    }
+
+    init();
+  </script>
+</body>
+</html>

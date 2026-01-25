@@ -1,0 +1,822 @@
+<!-- EDITOR -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mind Map – d3-force</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #0b0f14;          /* very dark blue-gray */
+      --panel: #121821;       /* slightly lighter than bg */
+      --text: #e5e7eb;        /* gray-100 */
+      --muted: #9aa3af;       /* gray-400 */
+      --accent: #7dd3fc;      /* sky-300 */
+      --link: #3b82f6;        /* blue-500 */
+      --danger: #ef4444;      /* red-500 */
+      --ok: #22c55e;          /* green-500 */
+      --border: #1f2937;      /* gray-800 */
+      --shadow: rgba(0,0,0,0.6);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+    .app { display: flex; flex-direction: column; height: 100%; }
+    .toolbar { display:flex; align-items:center; gap:.5rem; padding:.6rem .8rem; border-bottom:1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)); position: sticky; top: 0; z-index: 2; }
+    .toolbar button { background: var(--panel); color: var(--text); border: 1px solid var(--border); padding: .45rem .7rem; border-radius: .6rem; cursor: pointer; box-shadow: 0 2px 6px var(--shadow); }
+    .toolbar button:hover { border-color: #334155; }
+    .range-group{display:flex;align-items:center;gap:.4rem;margin-left:1rem}
+    .range-group label{color:var(--muted);font-size:.85rem}
+    .range-group input[type=range]{accent-color:var(--accent);width:140px}
+    .content { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 320px; }
+    .graph-wrap { position: relative; background: radial-gradient(1200px 600px at 40% 20%, rgba(255,255,255,0.04), rgba(255,255,255,0) 60%), var(--bg); }
+    .inspector { border-left: 1px solid var(--border); background: var(--panel); padding: 12px; display:flex; flex-direction:column; gap:.75rem; }
+    .inspector h3 { margin: 4px 0 0; font-weight: 600; font-size: 1rem; letter-spacing: .02em; }
+    .inspector .card { border: 1px solid var(--border); border-radius: .75rem; padding: .8rem; background: rgba(255,255,255,0.02); box-shadow: 0 8px 24px var(--shadow) inset; }
+    .field { display: grid; grid-template-columns: 82px 1fr; align-items: center; gap:.5rem; margin:.35rem 0; }
+    .field label { color: var(--muted); font-size: .85rem; }
+    .field input, .field textarea { width: 100%; background: #0e141c; color: var(--text); border:1px solid var(--border); border-radius: .5rem; padding:.5rem .6rem; font-size:.95rem; }
+    .field textarea { resize: vertical; min-height: 70px; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 0.85rem; }
+
+    /* Code editor textarea */
+    .code-editor-wrap {
+      width: 100%;
+      height: 280px;
+    }
+    .code-input {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0.6rem;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow: auto;
+      color: #e5e7eb;
+      background: #0a0e13;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      resize: none;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .code-input:focus {
+      border-color: var(--accent);
+    }
+    .code-input::placeholder { color: #4a5568; }
+    .row { display:flex; align-items:center; gap:.5rem; flex-wrap: wrap; }
+    .badge { font-size: .75rem; padding:.2rem .45rem; border:1px solid var(--border); border-radius:.4rem; color: var(--muted); }
+    .error { color: var(--danger); font-size: .9rem; }
+
+    svg { width: 100%; height: 100%; display:block; cursor: grab; }
+    svg:active { cursor: grabbing; }
+
+    .link { stroke: #64748b; stroke-opacity: 0.9; stroke-width: 2px; }
+    .link.highlight { stroke: var(--accent); stroke-opacity: .9; }
+    .link-hot { stroke: transparent; stroke-width: 14px; pointer-events: stroke; }
+
+    .node-g { cursor: move; }
+    .node-rect { stroke: rgba(255,255,255,0.2); stroke-width: 1px; rx: 9px; ry: 9px; }
+    .node-rect.selected { stroke: var(--accent); stroke-width: 2px; }
+
+    .node-label { font-size: 12px; dominant-baseline: middle; text-anchor: middle; fill: var(--text); pointer-events: none; paint-order: stroke; stroke: rgba(0,0,0,0.55); stroke-width: 2px; }
+
+    /* HTML content inside nodes */
+    .node-html-wrap { pointer-events: none; overflow: visible; }
+    .node-html {
+      font-size: 11px;
+      color: var(--text);
+      text-align: center;
+      padding: 4px 8px;
+      line-height: 1.3;
+      word-wrap: break-word;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      /* Black text outline for visibility */
+      text-shadow:
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000,
+        0 -1px 0 #000,
+        0 1px 0 #000,
+        -1px 0 0 #000,
+        1px 0 0 #000;
+    }
+    .node-html a { color: var(--accent); text-decoration: underline; pointer-events: auto; cursor: pointer; }
+    .node-html a:hover { color: #a5e8ff; }
+    .node-html img { max-width: 100%; height: auto; display: block; margin: 4px auto; border-radius: 4px; }
+    .node-html ul, .node-html ol { margin: 4px 0; padding-left: 16px; text-align: left; }
+    .node-html p { margin: 4px 0; }
+    .node-html code { background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px; font-size: 0.9em; }
+    .node-html pre { background: rgba(0,0,0,0.3); padding: 6px; border-radius: 4px; overflow-x: auto; text-align: left; font-size: 0.9em; }
+    .node-html h1, .node-html h2, .node-html h3, .node-html h4 { margin: 4px 0; font-weight: 600; }
+    .node-html h1 { font-size: 1.4em; }
+    .node-html h2 { font-size: 1.3em; }
+    .node-html h3 { font-size: 1.2em; }
+    .node-html h4 { font-size: 1.1em; }
+
+    /* Temporary link preview while right-dragging to connect */
+    .dragline { stroke: var(--accent); stroke-opacity: .8; stroke-width: 2px; stroke-dasharray: 4 3; pointer-events: none; }
+
+    .help { position: absolute; left: 12px; bottom: 12px; background: rgba(0,0,0,0.3); border:1px solid var(--border); padding: .5rem .65rem; border-radius:.6rem; color: var(--muted); font-size: .85rem; backdrop-filter: blur(6px); }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="toolbar">
+    <button id="importBtn">Import JSON</button>
+    <button id="exportBtn">Export JSON</button>
+    <button id="fitBtn">Fit</button>
+    <button id="resetBtn">Reset</button>
+    <div class="range-group"><label>Size boost</label><input id="boostRange" type="range" min="0" max="100" step="1" value="15"/><span id="boostValue" class="badge">15</span></div><div class="range-group"><label>Spread</label><input id="spreadRange" type="range" min="0.4" max="3.0" step="0.05" value="1.5"/><span id="spreadValue" class="badge">1.5×</span></div>
+    <span class="hint">N: new node • Right-drag: connect • Click: select • Drag: move • Scroll: zoom • Drag background: pan</span>
+    <input id="fileInput" type="file" accept="application/json" style="display:none" />
+  </div>
+  <div class="content">
+    <div class="graph-wrap" id="graphWrap">
+      <svg id="graph" tabindex="0" aria-label="Mind map canvas">
+        <defs>
+          <!-- Soft glow filter around nodes -->
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3.5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <g id="zoomLayer">
+          <g class="links"></g>
+          <g class="nodes"></g>
+          <line class="dragline" style="display:none" />
+        </g>
+      </svg>
+      <div class="help">Undirected graph • names must be unique</div>
+    </div>
+
+    <aside class="inspector">
+      <h3>Inspector</h3>
+      <div class="card">
+        <div class="row" style="justify-content: space-between;align-items:center;">
+          <div class="badge" id="degBadge">degree: 0</div>
+          <div class="badge" id="posBadge">x: –, y: –</div>
+        </div>
+        <div style="margin-top: 0.5rem;">
+          <label for="notesInput" style="color:var(--muted);font-size:.85rem;display:block;margin-bottom:0.3rem;">HTML Content</label>
+          <div class="code-editor-wrap">
+            <textarea id="notesInput" class="code-input" spellcheck="false" placeholder="<h3>Title</h3>&#10;<p>Content here...</p>&#10;<a href=&quot;url&quot;>Link</a>"></textarea>
+          </div>
+        </div>
+        <div class="row" style="margin-top: 0.5rem;">
+          <button id="applyBtn">Apply</button>
+          <div id="err" class="error" style="display:none"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-size:.85rem;color:var(--muted);line-height:1.35;">
+          <div><strong>Tips</strong></div>
+          <ul style="margin:.4rem 0 .2rem 1rem; padding:0;">
+            <li>Press <kbd>N</kbd> to add a node.</li>
+            <li>Right-drag to connect nodes.</li>
+            <li>Press <kbd>X</kbd> to delete selected node.</li>
+            <li>Right-click edge to delete it.</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+  const svg = d3.select('#graph');
+  const zoomLayer = d3.select('#zoomLayer');
+  const linkLayer = d3.select('.links');
+  const nodeLayer = d3.select('.nodes');
+  const dragline = d3.select('.dragline');
+  const graphWrap = document.getElementById('graphWrap');
+
+  // UI elements
+  const notesInput = document.getElementById('notesInput');
+  const applyBtn = document.getElementById('applyBtn');
+  const degBadge = document.getElementById('degBadge');
+  const posBadge = document.getElementById('posBadge');
+  const errEl = document.getElementById('err');
+
+  const importBtn = document.getElementById('importBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const fitBtn = document.getElementById('fitBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const fileInput = document.getElementById('fileInput');
+  const boostRange = document.getElementById('boostRange');
+  const boostValue = document.getElementById('boostValue');
+  let degreeBoost = +boostRange.value || 32;
+  const spreadRange = document.getElementById('spreadRange');
+  const spreadValue = document.getElementById('spreadValue');
+  let spreadFactor = spreadRange ? +spreadRange.value : 1.0;
+
+  // Data
+  /** @type {{id:string, x?:number, y?:number, fx?:number, fy?:number, degree?:number, w?:number, h?:number, collisionRadius?:number, scale?:number, createdAt?:number, notes?:string}[]} */
+  let nodes = [];
+  /** @type {{source:any, target:any}[]} */
+  let links = [];
+
+  let selected = null;         // currently selected node
+  let linking = null;          // node we're right-dragging from
+  let lastMouse = {x: 0, y: 0}; // track cursor (graph coordinates)
+  let selectedLink = null;
+
+  // Center (kept up-to-date on resize)
+  let center = {x: 0, y: 0};
+
+  // Scales
+  let color = d3.scaleSequential(d3.interpolateCividis).domain([0,1]);
+
+  // Get display HTML for a node (notes if present, otherwise id)
+  function getDisplayHtml(d) {
+    if (d.notes && d.notes.trim()) return d.notes;
+    return `<span style="font-weight:500">${d.id}</span>`;
+  }
+
+  // Helpers to size rectangles based on HTML content
+  function computeSize(d){
+    const minW = 70;
+    const minH = 40;
+    const paddingW = 24;
+    const paddingH = 20;
+    const deg = d.degree || 0;
+
+    // Estimate content size from HTML
+    const html = getDisplayHtml(d);
+    const htmlSize = estimateHtmlSize(html);
+
+    // Base size from content
+    const baseW = Math.max(minW, htmlSize.w + paddingW);
+    const baseH = Math.max(minH, htmlSize.h + paddingH);
+
+    // Scale factor based on degree (preserves aspect ratio)
+    const scale = 1 + Math.min(2, Math.pow(deg, 0.8) * degreeBoost / 100);
+
+    // Store base dimensions for transform scaling
+    d.baseW = baseW;
+    d.baseH = baseH;
+    // Apply scale to both dimensions proportionally
+    d.w = baseW * scale;
+    d.h = baseH * scale;
+    d.scale = scale;
+    // collision radius ~ half of diagonal + small gap
+    d.collisionRadius = 0.5 * Math.hypot(d.w, d.h);
+  }
+
+  // Estimate rendered HTML size (rough heuristic)
+  function estimateHtmlSize(html){
+    // Check for images with explicit dimensions
+    const imgMatch = html.match(/<img[^>]*width\s*=\s*["']?(\d+)/i);
+    const imgHeightMatch = html.match(/<img[^>]*height\s*=\s*["']?(\d+)/i);
+    let imgW = imgMatch ? parseInt(imgMatch[1], 10) : 0;
+    let imgH = imgHeightMatch ? parseInt(imgHeightMatch[1], 10) : 0;
+
+    // If image found without explicit height, estimate based on width or default
+    if (html.includes('<img') && !imgH) {
+      imgH = imgW ? Math.round(imgW * 0.75) : 60; // default image height
+      if (!imgW) imgW = 80;
+    }
+
+    // Estimate text size (strip tags, count chars)
+    const textOnly = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const charWidth = 7;
+    const lineHeight = 18;
+    const maxLineChars = 25;
+    // Count line breaks and list items for better height estimate
+    const listItems = (html.match(/<li/gi) || []).length;
+    const lineBreaks = (html.match(/<br|<\/p>|<\/h[1-4]>|<\/li>/gi) || []).length;
+    const textLines = Math.max(1, Math.ceil(textOnly.length / maxLineChars) + lineBreaks + listItems);
+    const textW = Math.min(textOnly.length * charWidth, maxLineChars * charWidth);
+    const textH = textLines * lineHeight;
+
+    return {
+      w: Math.max(imgW, textW, 70),
+      h: Math.max(30, imgH + textH + (imgH && textH ? 8 : 0))
+    };
+  }
+
+  function linkDist(l){
+    const sum = Math.min(6, (l.source?.degree||0) + (l.target?.degree||0));
+    return (40 + sum*2) * Math.pow(spreadFactor || 1, 0.9);
+  }
+  function chargeStrength(d){
+    const N = Math.max(1, nodes.length - 1);
+    const deg = d.degree || 0;
+    const unlinkedRatio = 1 - (deg / N); // 1 for isolates, ~0 for highly connected
+    const base = -120 * (spreadFactor || 1);
+    return base * (1 + 0.8 * unlinkedRatio); // stronger repulsion for poorly-connected nodes
+  }
+  function updateSpread(){
+    sim.force('charge').strength(chargeStrength);
+    sim.force('x').strength(0.08 / (spreadFactor || 1));
+    sim.force('y').strength(0.08 / (spreadFactor || 1));
+    sim.force('link').distance(linkDist);
+    sim.alpha(0.2).restart();
+  }
+
+  // Simulation (tuned for compact layout)
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links)
+      .id(d => d.id)
+      .distance(linkDist)
+      .strength(0.35)
+    )
+    .force('charge', d3.forceManyBody().strength(chargeStrength)) // milder repulsion to stay compact
+    .force('x', d3.forceX(() => center.x).strength(0.08))
+    .force('y', d3.forceY(() => center.y).strength(0.08))
+    .force('collide', d3.forceCollide().radius(d => (d.collisionRadius || 24) + 6).strength(0.95))
+    .alphaDecay(0.05)
+    .on('tick', ticked);
+
+  // Resize handling for center force
+  function updateCenter() {
+    const rect = graphWrap.getBoundingClientRect();
+    center.x = rect.width/2;
+    center.y = rect.height/2;
+    sim.force('center', d3.forceCenter(center.x, center.y)); // keep as gentle anchor
+  }
+  window.addEventListener('resize', updateCenter);
+  updateCenter();
+  updateSpread();
+
+  // Zoom behavior (background pan/zoom)
+  const zoom = d3.zoom().scaleExtent([0.2, 3]).on('zoom', (event) => {
+    zoomLayer.attr('transform', event.transform);
+  });
+  svg.call(zoom);
+
+  // Prevent the default right-click menu over the SVG
+  svg.on('contextmenu', (event) => event.preventDefault());
+
+  // Track mouse in graph coordinates
+  svg.on('mousemove', (event) => {
+    const t = d3.zoomTransform(svg.node());
+    let x, y;
+    if (typeof event.offsetX === 'number' && typeof event.offsetY === 'number') {
+      [x, y] = t.invert([event.offsetX, event.offsetY]);
+    } else {
+      const rect = svg.node().getBoundingClientRect();
+      [x, y] = t.invert([event.clientX - rect.left, event.clientY - rect.top]);
+    }
+    lastMouse = { x, y };
+    if (linking) updateDragline(lastMouse.x, lastMouse.y);
+  });
+
+  // Key: N to add node
+  window.addEventListener('keydown', (e) => {
+    if ((e.key === 'n' || e.key === 'N') && !isTyping()) {
+      e.preventDefault();
+      promptAddNodeNearCluster();
+    }
+  });
+  window.addEventListener('keydown', (e) => {
+    if ((e.key === 'x' || e.key === 'X') && !isTyping()) {
+      if (selected) { e.preventDefault(); deleteNode(selected); }
+    }
+  });
+
+  // Buttons
+  importBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', onImport);
+  exportBtn.addEventListener('click', onExport);
+  resetBtn.addEventListener('click', () => { nodes = []; links = []; selected = null; linking = null; selectedLink=null; render(); restart(); });
+  fitBtn.addEventListener('click', fitGraph);
+  if (boostRange){
+    boostRange.addEventListener('input', ()=>{
+      degreeBoost = +boostRange.value;
+      if (boostValue) boostValue.textContent = String(degreeBoost);
+      render();
+      restart(0.2);
+    });
+  }
+  if (spreadRange){
+    spreadFactor = +spreadRange.value || spreadFactor;
+    if (spreadValue) spreadValue.textContent = spreadFactor.toFixed(2) + '×';
+    spreadRange.addEventListener('input', ()=>{
+      spreadFactor = +spreadRange.value;
+      if (spreadValue) spreadValue.textContent = spreadFactor.toFixed(2) + '×';
+      updateSpread();
+    });
+  }
+
+  applyBtn.addEventListener('click', applyInspectorChanges);
+  notesInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && (e.metaKey||e.ctrlKey)){ e.preventDefault(); applyInspectorChanges(); } });
+
+  function isTyping(){
+    const t = document.activeElement?.tagName;
+    return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || document.activeElement?.isContentEditable;
+  }
+
+  function clusterCentroid(){
+    if (!nodes.length) return {...center};
+    let sx=0, sy=0, k=0;
+    for (const n of nodes){
+      if (Number.isFinite(n.x) && Number.isFinite(n.y)) { sx+=n.x; sy+=n.y; k++; }
+    }
+    if (!k) return {...center};
+    return {x: sx/k, y: sy/k};
+  }
+
+  function promptAddNodeNearCluster() {
+    // Auto-create node with a random unique name and focus the HTML editor
+    let newId;
+    do {
+      newId = 'Node-' + Math.random().toString(36).slice(2,6);
+    } while (findNode(newId));
+    const c = clusterCentroid();
+    const jitter = () => (Math.random()*2-1) * 30; // spawn close to cluster
+    const n = { id: newId, x: c.x + jitter(), y: c.y + jitter(), createdAt: Date.now() };
+    nodes.push(n);
+    selectNode(n);
+    render();
+    restart(0.9);
+    setTimeout(() => { notesInput.focus(); }, 0);
+  }
+
+  function selectNode(n) {
+    selected = n;
+    selectedLink = null;
+    updateInspector();
+    render();
+  }
+
+  function updateInspector(){
+    if (!selected) {
+      if (notesInput) notesInput.value = '';
+      degBadge.textContent = 'degree: 0';
+      posBadge.textContent = 'x: –, y: –';
+      errEl.style.display='none';
+      return;
+    }
+    if (notesInput) notesInput.value = selected.notes || '';
+    degBadge.textContent = `degree: ${selected.degree || 0}`;
+    const x = selected.x?.toFixed(1) ?? '–';
+    const y = selected.y?.toFixed(1) ?? '–';
+    posBadge.textContent = `x: ${x}, y: ${y}`;
+    errEl.style.display='none';
+  }
+
+  function applyInspectorChanges(){
+    if (!selected) return;
+
+    const newNotes = (notesInput?.value || '').trim();
+    selected.notes = newNotes || undefined;
+
+    // Recompute and refresh
+    render();
+    restart(0.6);
+    updateInspector();
+  }
+
+  function parseNameList(str){
+    return str.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  }
+
+  function showError(msg){ errEl.textContent = msg; errEl.style.display = 'block'; }
+
+  function nodeName(x){ return typeof x === 'string' ? x : x.id; }
+  function linkKey(a,b){ return a < b ? `${a}||${b}` : `${b}||${a}`; }
+
+  function hasLink(a,b){
+    const key = linkKey(a,b);
+    return links.some(l => linkKey(nodeName(l.source), nodeName(l.target)) === key);
+  }
+  function addLink(a,b){
+    if (a === b) return;
+    if (hasLink(a,b)) return;
+    links.push({ source: a, target: b });
+  }
+  function deleteNode(node){
+    const id = node.id;
+    nodes = nodes.filter(n => n !== node);
+    links = links.filter(l => nodeName(l.source) !== id && nodeName(l.target) !== id);
+    if (selected === node) { selected = null; updateInspector(); }
+    render();
+    restart(0.4);
+  }
+
+  function linkId(d){ return linkKey(nodeName(d.source), nodeName(d.target)); }
+  function selectLink(d){ selectedLink = d; selected=null; updateInspector(); render(); }
+  function deleteLink(d){ const k = linkId(d); links = links.filter(l => linkId(l) !== k); if (selectedLink && linkId(selectedLink) === k) selectedLink = null; render(); restart(0.3); }
+
+  function neighborsOf(n){
+    const nm = n.id;
+    const neigh = new Set();
+    for (const l of links){
+      const s = nodeName(l.source), t = nodeName(l.target);
+      if (s === nm) neigh.add(t); else if (t === nm) neigh.add(s);
+    }
+    return Array.from(neigh).sort();
+  }
+
+  function findNode(name){ return nodes.find(n => n.id === name); }
+
+  function recalcDegrees(){
+    const deg = new Map(nodes.map(n => [n.id, 0]));
+    for (const l of links){
+      const s = nodeName(l.source), t = nodeName(l.target);
+      if (deg.has(s)) deg.set(s, deg.get(s) + 1);
+      if (deg.has(t)) deg.set(t, deg.get(t) + 1);
+    }
+    let max = 0;
+    for (const n of nodes){
+      n.degree = deg.get(n.id) || 0;
+      if (n.degree > max) max = n.degree;
+      computeSize(n);
+    }
+    color.domain([0, Math.max(1, max)]);
+  }
+
+  function render(){
+    recalcDegrees();
+
+    // LINKS (main visible lines)
+    const linkSel = linkLayer.selectAll('line.link').data(links, d => linkKey(nodeName(d.source), nodeName(d.target)));
+    linkSel.exit().remove();
+    const linkEnter = linkSel.enter().append('line').attr('class','link')
+      .attr('stroke', '#64748b').attr('stroke-opacity', 0.9).attr('stroke-width', 2);
+    linkEnter.merge(linkSel)
+      .classed('highlight', d => selectedLink && linkId(d) === linkId(selectedLink));
+
+    // LINKS HOT AREA (large hit target for selection/deletion)
+    const hotSel = linkLayer.selectAll('line.link-hot').data(links, d => linkKey(nodeName(d.source), nodeName(d.target)));
+    hotSel.exit().remove();
+    const hotEnter = hotSel.enter().append('line').attr('class','link-hot');
+    hotEnter.merge(hotSel)
+      .on('click', (event,d)=>{ event.stopPropagation(); selectLink(d); })
+      .on('contextmenu', (event,d)=>{ event.preventDefault(); event.stopPropagation(); deleteLink(d); });
+
+    // NODES
+    const nodeSel = nodeLayer.selectAll('g.node-g').data(nodes, d => d.id);
+    nodeSel.exit().remove();
+    const nodeEnter = nodeSel.enter().append('g')
+      .attr('class','node-g')
+      .on('click', (event, d) => { if (event.button !== 0) return; event.stopPropagation(); selectNode(d); })
+      .on('mousedown', (event, d) => {
+        // right-button starts linking
+        if (event.button === 2) { event.stopPropagation(); startLinking(d); }
+      })
+      .on('mouseup', (event, d) => {
+        if (event.button === 2) { event.stopPropagation(); finishLinking(d); }
+      })
+      .on('contextmenu', (event) => { event.preventDefault(); event.stopPropagation(); /* no node delete */ })
+      .on('pointerdown', (event) => { event.stopPropagation(); })
+      .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended));
+
+    nodeEnter.append('rect')
+      .attr('class','node-rect')
+      .attr('x', d => -(d.w||30)/2)
+      .attr('y', d => -(d.h||20)/2)
+      .attr('width', d => d.w||30)
+      .attr('height', d => d.h||20)
+      .attr('filter', 'url(#glow)');
+
+    // foreignObject for HTML content (centered in node)
+    nodeEnter.append('foreignObject')
+      .attr('class', 'node-html-wrap');
+
+    const nodeMerge = nodeEnter.merge(nodeSel);
+
+    nodeMerge.select('rect')
+      .classed('selected', d => selected && d.id === selected.id)
+      .attr('x', d => -(d.w)/2)
+      .attr('y', d => -(d.h)/2)
+      .attr('width', d => d.w)
+      .attr('height', d => d.h)
+      .attr('fill', d => color(d.degree || 0))
+      .attr('fill-opacity', 0.95);
+
+    // Update foreignObject for HTML content (centered in node)
+    nodeMerge.select('foreignObject.node-html-wrap')
+      .attr('x', d => -(d.w)/2)
+      .attr('y', d => -(d.h)/2)
+      .attr('width', d => d.w)
+      .attr('height', d => d.h)
+      .each(function(d) {
+        const fo = d3.select(this);
+        // Create or update the HTML div
+        let div = fo.select('div.node-html');
+        if (div.empty()) {
+          div = fo.append('xhtml:div').attr('class', 'node-html');
+        }
+        div.html(getDisplayHtml(d));
+        // Use CSS transform to scale content uniformly (preserves aspect ratio)
+        div.style('width', d.baseW + 'px')
+           .style('height', d.baseH + 'px')
+           .style('transform', `scale(${d.scale})`)
+           .style('transform-origin', '0 0');
+      });
+
+    // Wire forces to current data
+    sim.nodes(nodes);
+    sim.force('link').id(d => d.id).links(links);
+    sim.alpha(0.5).restart();
+  }
+
+  function ticked(){
+    // Link positions
+    linkLayer.selectAll('line.link')
+      .attr('x1', d => (d.source && Number.isFinite(d.source.x) ? d.source.x : 0))
+      .attr('y1', d => (d.source && Number.isFinite(d.source.y) ? d.source.y : 0))
+      .attr('x2', d => (d.target && Number.isFinite(d.target.x) ? d.target.x : 0))
+      .attr('y2', d => (d.target && Number.isFinite(d.target.y) ? d.target.y : 0));
+
+    linkLayer.selectAll('line.link-hot')
+      .attr('x1', d => (d.source && Number.isFinite(d.source.x) ? d.source.x : 0))
+      .attr('y1', d => (d.source && Number.isFinite(d.source.y) ? d.source.y : 0))
+      .attr('x2', d => (d.target && Number.isFinite(d.target.x) ? d.target.x : 0))
+      .attr('y2', d => (d.target && Number.isFinite(d.target.y) ? d.target.y : 0));
+
+    // Node positions
+    nodeLayer.selectAll('g.node-g')
+      .attr('transform', d => `translate(${d.x},${d.y})`);
+
+    // inspector live position
+    if (selected) {
+      posBadge.textContent = `x: ${selected.x?.toFixed(1)}, y: ${selected.y?.toFixed(1)}`;
+    }
+  }
+
+  function restart(alpha=0.6){
+    recalcDegrees();
+    // Update collide radius (sizes may have changed)
+    sim.force('collide').radius(d => (d.collisionRadius || 24) + 6);
+    sim.alpha(alpha).restart();
+  }
+
+  function dragstarted(event, d){
+    if (!event.active) sim.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+  }
+  function dragged(event, d){
+    d.fx = event.x;
+    d.fy = event.y;
+  }
+  function dragended(event, d){
+    if (!event.active) sim.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+  }
+
+  // Right-drag linking helpers
+  function startLinking(node){
+    linking = node;
+    dragline.style('display', null)
+      .attr('x1', node.x)
+      .attr('y1', node.y)
+      .attr('x2', node.x)
+      .attr('y2', node.y);
+  }
+  function updateDragline(x, y){
+    if (!linking) return;
+    dragline.attr('x1', linking.x).attr('y1', linking.y).attr('x2', x).attr('y2', y);
+  }
+  function finishLinking(target){
+    if (!linking) return;
+    if (target && target !== linking) {
+      addLink(linking.id, target.id);
+      render();
+      restart(0.6);
+    }
+    cancelLinking();
+  }
+  function cancelLinking(){ linking = null; dragline.style('display', 'none'); }
+
+  // Click background to clear selection
+  svg.on('click', (e) => { if (e.target === svg.node()) { selected = null; selectedLink = null; updateInspector(); render(); }});
+
+  // Import / Export
+  function onExport(){
+    // Produce a clean undirected set (no duplicates)
+    const uniq = new Set();
+    const outLinks = [];
+    for (const l of links){
+      const a = nodeName(l.source), b = nodeName(l.target);
+      const k = linkKey(a,b);
+      if (!uniq.has(k)) { uniq.add(k); outLinks.push({ source: a, target: b }); }
+    }
+    const out = {
+      nodes: nodes.map(n => ({ id: n.id, x: n.x, y: n.y, ...(n.notes ? { notes: n.notes } : {}) })),
+      links: outLinks
+    };
+    const blob = new Blob([JSON.stringify(out, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'mindmap.json'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function normalizeURL(u){ if(!u) return null; const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(u); return hasScheme ? u : ('https://' + u); }
+
+  function resolveName(v, nodesArr){
+    if (typeof v === 'string') return v.trim();
+    if (typeof v === 'number') { const idx = Math.floor(v); return nodesArr[idx]?.id || null; }
+    if (v && typeof v === 'object') {
+      if (typeof v.id === 'string') return v.id.trim();
+      if (typeof v.id === 'number') { const idx = Math.floor(v.id); return nodesArr[idx]?.id || null; }
+    }
+    return null;
+  }
+
+  async function onImport(e){
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!Array.isArray(data.nodes) || !Array.isArray(data.links)) throw new Error('Invalid format');
+      // Validate duplicates
+      const names = data.nodes.map(n => String(n.id).trim());
+      const dup = findDuplicates(names);
+      if (dup.length){ alert('Duplicate node names in file: ' + dup.join(', ')); return; }
+      // Build
+      nodes = data.nodes.map(n => {
+        const id = String(n.id).trim();
+        const x = Number.isFinite(+n.x) ? +n.x : undefined;
+        const y = Number.isFinite(+n.y) ? +n.y : undefined;
+        return { id, x, y, notes: (typeof n.notes === 'string' && n.notes.trim()) || undefined };
+      });
+      const existing = new Set(nodes.map(n => n.id));
+      links = [];
+      const seen = new Set();
+      for (const l of data.links){
+        const a = resolveName(l.source, nodes), b = resolveName(l.target, nodes);
+        if (a === b) continue;
+        if (!existing.has(a) || !existing.has(b)) continue;
+        const k = linkKey(a,b);
+        if (seen.has(k)) continue; seen.add(k);
+        links.push({ source: a, target: b });
+      }
+      selected = null; linking = null; selectedLink = null;
+      // Ensure the simulation resolves link endpoints to node objects before first render
+      sim.nodes(nodes);
+      sim.force('link').id(d => d.id).links(links);
+      render();
+      restart(0.8);
+      // Fit immediately and again after the layout has progressed to ensure correct centering
+      fitGraph();
+      setTimeout(fitGraph, 120);
+      setTimeout(fitGraph, 360);
+      sim.on('end', function onceFit(){ fitGraph(); sim.on('end', null); });
+    } catch(err){
+      console.error(err);
+      alert('Failed to import JSON: ' + (err?.message || err));
+    } finally {
+      fileInput.value = '';
+    }
+  }
+
+  function findDuplicates(arr){
+    const seen = new Set(); const dup = [];
+    for (const v of arr){ if (seen.has(v)) dup.push(v); else seen.add(v); }
+    return dup;
+  }
+
+  // Fit graph into view
+  function fitGraph(){
+    const bounds = zoomLayer.node().getBBox();
+    const parent = svg.node().getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return; // nothing to fit
+    const fullWidth = parent.width, fullHeight = parent.height;
+    const scale = Math.max(0.2, Math.min(2.5, 0.9 / Math.max(bounds.width / fullWidth, bounds.height / fullHeight)));
+    const translate = [fullWidth/2 - scale * (bounds.x + bounds.width/2), fullHeight/2 - scale * (bounds.y + bounds.height/2)];
+    svg.transition().duration(350).call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+  }
+
+  // --- Smoke tests (dev) ---
+  function runSmokeTests(){
+    console.assert(typeof ticked === 'function', 'ticked() should exist');
+    console.assert(typeof computeSize === 'function', 'computeSize() exists');
+    console.assert(typeof linkDist === 'function', 'linkDist() exists');
+    console.assert(typeof chargeStrength === 'function', 'chargeStrength() exists');
+    console.assert(svg.node() && zoomLayer.node(), 'SVG and layers present');
+    console.assert(Array.isArray(nodes) && nodes.length >= 3, 'Seeded 3 nodes');
+  }
+
+  // Seed with a tiny example so the canvas isn’t empty
+  (function seed(){
+    const a = {id:'Idea'}, b = {id:'Research'}, c = {id:'Notes'};
+    nodes.push(a,b,c);
+    links.push({source:'Idea', target:'Research'}, {source:'Research', target:'Notes'});
+    render();
+    restart(0.8);
+    runSmokeTests();
+  })();
+})();
+</script>
+</body>
+</html>

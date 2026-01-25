@@ -1,0 +1,129 @@
+{
+  "nodes": [
+    {
+      "id": "Idea",
+      "x": 308.4902455164784,
+      "y": 307.80292861543404,
+      "notes": "<img src=\"https://picsum.photos/80/60\" width=\"80\">\n<p>Rasdandom image</p>"
+    },
+    {
+      "id": "Research",
+      "x": 232.4829195031099,
+      "y": 527.2814934183109
+    },
+    {
+      "id": "Notes",
+      "x": 116.38380674369314,
+      "y": 438.3162367050785
+    },
+    {
+      "id": "Node-4vfh",
+      "x": 534.1468636028957,
+      "y": 325.198544228893
+    },
+    {
+      "id": "Node-9kqr",
+      "x": 504.2292098274892,
+      "y": 194.1519666463603
+    },
+    {
+      "id": "Node-9ohm",
+      "x": 405.2285399604047,
+      "y": 103.1953107276607
+    },
+    {
+      "id": "Node-arlw",
+      "x": 372.7891125927015,
+      "y": 524.8409650409052
+    },
+    {
+      "id": "Node-ozsf",
+      "x": 484.53929602185315,
+      "y": 450.1030613268786
+    },
+    {
+      "id": "Node-boo5",
+      "x": 783.4605483887129,
+      "y": 490.57275147499615
+    },
+    {
+      "id": "Node-egel",
+      "x": 672.0831184310983,
+      "y": 415.258492164741
+    },
+    {
+      "id": "Node-t7nv",
+      "x": 806.2554258583293,
+      "y": 336.8724303406776
+    },
+    {
+      "id": "Node-6b8a",
+      "x": 661.1463920385445,
+      "y": 281.26185997499823
+    },
+    {
+      "id": "Node-c1mx",
+      "x": 891.9712699532345,
+      "y": 207.25609236576477
+    },
+    {
+      "id": "Node-v1wl",
+      "x": 758.7946916755667,
+      "y": 188.86850619015036
+    }
+  ],
+  "links": [
+    {
+      "source": "Idea",
+      "target": "Research"
+    },
+    {
+      "source": "Research",
+      "target": "Notes"
+    },
+    {
+      "source": "Node-ozsf",
+      "target": "Idea"
+    },
+    {
+      "source": "Node-arlw",
+      "target": "Idea"
+    },
+    {
+      "source": "Node-9ohm",
+      "target": "Idea"
+    },
+    {
+      "source": "Node-9kqr",
+      "target": "Idea"
+    },
+    {
+      "source": "Node-4vfh",
+      "target": "Idea"
+    },
+    {
+      "source": "Notes",
+      "target": "Idea"
+    },
+    {
+      "source": "Node-egel",
+      "target": "Node-t7nv"
+    },
+    {
+      "source": "Node-boo5",
+      "target": "Node-t7nv"
+    },
+    {
+      "source": "Node-6b8a",
+      "target": "Node-t7nv"
+    },
+    {
+      "source": "Node-c1mx",
+      "target": "Node-t7nv"
+    },
+    {
+      "source": "Node-v1wl",
+      "target": "Node-t7nv"
+    }
+  ]
+}

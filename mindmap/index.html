@@ -700,7 +700,7 @@
   svg.on('click', (e) => { if (e.target === svg.node()) { selected = null; selectedLink = null; updateInspector(); render(); }});
 
   // Import / Export
-  function onExport(){
+  async function onExport(){
     // Produce a clean undirected set (no duplicates)
     const uniq = new Set();
     const outLinks = [];
@@ -714,6 +714,28 @@
       links: outLinks
     };
     const blob = new Blob([JSON.stringify(out, null, 2)], {type: 'application/json'});
+
+    // Use File System Access API if available (allows choosing directory and filename)
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: 'mindmap.json',
+          types: [{
+            description: 'JSON Files',
+            accept: { 'application/json': ['.json'] }
+          }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return; // User cancelled
+        // Fall through to legacy method
+      }
+    }
+
+    // Fallback for browsers without File System Access API
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'mindmap.json'; a.click();

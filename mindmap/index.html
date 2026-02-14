@@ -28,6 +28,10 @@
     .range-group{display:flex;align-items:center;gap:.4rem;margin-left:1rem}
     .range-group label{color:var(--muted);font-size:.85rem}
     .range-group input[type=range]{accent-color:var(--accent);width:140px}
+    .range-group select{background:var(--panel);color:var(--text);border:1px solid var(--border);padding:.35rem .5rem;border-radius:.5rem;font-size:.85rem;cursor:pointer;}
+    .dropdown-wrap{position:relative;display:inline-block}
+    .dropdown-panel{display:none;position:absolute;top:100%;left:0;margin-top:.4rem;background:var(--panel);border:1px solid var(--border);border-radius:.75rem;padding:.7rem .8rem;box-shadow:0 8px 24px var(--shadow);z-index:10;min-width:260px}
+    .dropdown-wrap.open .dropdown-panel{display:flex;flex-direction:column;gap:.6rem}
     .content { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 320px; }
     .graph-wrap { position: relative; background: radial-gradient(1200px 600px at 40% 20%, rgba(255,255,255,0.04), rgba(255,255,255,0) 60%), var(--bg); }
     .inspector { border-left: 1px solid var(--border); background: var(--panel); padding: 12px; display:flex; flex-direction:column; gap:.75rem; }
@@ -73,8 +77,8 @@
     svg { width: 100%; height: 100%; display:block; cursor: grab; }
     svg:active { cursor: grabbing; }
 
-    .link { stroke: #64748b; stroke-opacity: 0.9; stroke-width: 2px; }
-    .link.highlight { stroke: var(--accent); stroke-opacity: .9; }
+    .link { stroke: #64748b; stroke-width: 2px; }
+    .link.highlight { stroke: var(--accent); }
     .link-hot { stroke: transparent; stroke-width: 14px; pointer-events: stroke; }
 
     .node-g { cursor: move; }
@@ -131,12 +135,19 @@
 <body>
 <div class="app">
   <div class="toolbar">
-    <button id="importBtn">Import JSON</button>
-    <button id="exportBtn">Export JSON</button>
-    <button id="fitBtn">Fit</button>
+    <button id="importBtn">Import</button>
+    <button id="saveBtn">Save</button>
+    <button id="exportBtn">Export</button>
     <button id="resetBtn">Reset</button>
-    <div class="range-group"><label>Size boost</label><input id="boostRange" type="range" min="0" max="100" step="1" value="15"/><span id="boostValue" class="badge">15</span></div><div class="range-group"><label>Spread</label><input id="spreadRange" type="range" min="0.4" max="3.0" step="0.05" value="1.5"/><span id="spreadValue" class="badge">1.5×</span></div>
-    <span class="hint">N: new node • Right-drag: connect • Click: select • Drag: move • Scroll: zoom • Drag background: pan</span>
+    <div class="dropdown-wrap" id="physicsDropdown">
+      <button id="physicsBtn">Physics</button>
+      <div class="dropdown-panel">
+        <div class="range-group"><label>Size boost</label><input id="boostRange" type="range" min="0" max="100" step="1" value="15"/><span id="boostValue" class="badge">15</span></div>
+        <div class="range-group"><label>Spread</label><input id="spreadRange" type="range" min="0" max="10" step="0.1" value="3.0"/><span id="spreadValue" class="badge">3.0×</span></div>
+        <div class="range-group"><label>Spacing</label><select id="spacingMode"><option value="cluster">Cluster</option><option value="min">Min</option><option value="sum">Sum</option></select></div>
+      </div>
+    </div>
+    <div class="range-group"><label>Colors</label><select id="colorScheme"><option value="viridis">Viridis</option><option value="cividis">Cividis</option><option value="plasma">Plasma</option><option value="inferno">Inferno</option><option value="magma">Magma</option><option value="turbo">Turbo</option><option value="warm">Warm</option><option value="cool">Cool</option></select></div>
     <input id="fileInput" type="file" accept="application/json" style="display:none" />
   </div>
   <div class="content">
@@ -146,6 +157,21 @@
           <!-- Soft glow filter around nodes -->
           <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="3.5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <filter id="glow-selected" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <filter id="glow-neighbor" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="5" result="blur" />
             <feMerge>
               <feMergeNode in="blur"/>
               <feMergeNode in="SourceGraphic"/>
@@ -186,8 +212,11 @@
           <ul style="margin:.4rem 0 .2rem 1rem; padding:0;">
             <li>Press <kbd>N</kbd> to add a node.</li>
             <li>Right-drag to connect nodes.</li>
+            <li>Click to select a node.</li>
+            <li>Drag to move a node.</li>
             <li>Press <kbd>X</kbd> to delete selected node.</li>
             <li>Right-click edge to delete it.</li>
+            <li>Scroll to zoom, drag background to pan.</li>
           </ul>
         </div>
       </div>
@@ -212,8 +241,10 @@
   const errEl = document.getElementById('err');
 
   const importBtn = document.getElementById('importBtn');
+  const saveBtn = document.getElementById('saveBtn');
   const exportBtn = document.getElementById('exportBtn');
-  const fitBtn = document.getElementById('fitBtn');
+  const physicsDropdown = document.getElementById('physicsDropdown');
+  const physicsBtn = document.getElementById('physicsBtn');
   const resetBtn = document.getElementById('resetBtn');
   const fileInput = document.getElementById('fileInput');
   const boostRange = document.getElementById('boostRange');
@@ -232,13 +263,25 @@
   let selected = null;         // currently selected node
   let linking = null;          // node we're right-dragging from
   let lastMouse = {x: 0, y: 0}; // track cursor (graph coordinates)
+  let importFileHandle = null; // File System Access API handle for Save
   let selectedLink = null;
 
   // Center (kept up-to-date on resize)
   let center = {x: 0, y: 0};
 
-  // Scales
-  let color = d3.scaleSequential(d3.interpolateCividis).domain([0,1]);
+  // Color schemes
+  const colorSchemes = {
+    cividis: d3.interpolateCividis,
+    viridis: d3.interpolateViridis,
+    plasma: d3.interpolatePlasma,
+    inferno: d3.interpolateInferno,
+    magma: d3.interpolateMagma,
+    turbo: d3.interpolateTurbo,
+    warm: d3.interpolateWarm,
+    cool: d3.interpolateCool,
+  };
+  const colorSchemeSelect = document.getElementById('colorScheme');
+  let color = d3.scaleSequential(colorSchemes[colorSchemeSelect.value] || d3.interpolateCividis).domain([0,1]);
 
   // Get display HTML for a node (notes if present, otherwise id)
   function getDisplayHtml(d) {
@@ -308,16 +351,38 @@
     };
   }
 
+  const spacingSelect = document.getElementById('spacingMode');
+  let spacingMode = spacingSelect.value || 'cluster';
+
   function linkDist(l){
-    const sum = Math.min(6, (l.source?.degree||0) + (l.target?.degree||0));
-    return (40 + sum*2) * Math.pow(spreadFactor || 1, 0.9);
+    const rSrc = l.source?.collisionRadius || 24;
+    const rTgt = l.target?.collisionRadius || 24;
+    const gap = 20;
+    let basis;
+    if (spacingMode === 'sum') basis = rSrc + rTgt;
+    else basis = Math.min(rSrc, rTgt) * 2; // min & cluster both use min
+    // Spread effect scales with max degree of the pair:
+    // degree 0-1 → exponent ~0 (barely affected), high degree → full exponent
+    const maxDeg = Math.max(l.source?.degree || 0, l.target?.degree || 0);
+    const maxPossible = Math.max(1, nodes.length - 1);
+    const t = Math.min(1, maxDeg / maxPossible); // 0..1
+    const exponent = 0.9 * t;
+    return (basis + gap) * Math.pow(spreadFactor || 1, exponent);
   }
+  // Baseline collision radius for a degree-0 node (minW=70, minH=40)
+  const baseRadius = 0.5 * Math.hypot(70, 40); // ~40
   function chargeStrength(d){
+    const base = -120 * (spreadFactor || 1);
+    if (spacingMode === 'cluster') {
+      // Repulsion scales with node area — big nodes repel strongly,
+      // small nodes barely repel so they cluster around big neighbors
+      const r = d.collisionRadius || baseRadius;
+      return base * Math.pow(r / baseRadius, 2);
+    }
     const N = Math.max(1, nodes.length - 1);
     const deg = d.degree || 0;
-    const unlinkedRatio = 1 - (deg / N); // 1 for isolates, ~0 for highly connected
-    const base = -120 * (spreadFactor || 1);
-    return base * (1 + 0.8 * unlinkedRatio); // stronger repulsion for poorly-connected nodes
+    const unlinkedRatio = 1 - (deg / N);
+    return base * (1 + 0.8 * unlinkedRatio);
   }
   function updateSpread(){
     sim.force('charge').strength(chargeStrength);
@@ -389,11 +454,35 @@
   });
 
   // Buttons
-  importBtn.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', onImport);
+  importBtn.addEventListener('click', async () => {
+    // Use File System Access API to get a writable handle for later Save
+    if ('showOpenFilePicker' in window) {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }],
+          multiple: false,
+        });
+        const file = await handle.getFile();
+        importFileHandle = handle;
+        await loadFile(file);
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        // Fall through to legacy file input
+      }
+    }
+    fileInput.click();
+  });
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (file) { importFileHandle = null; loadFile(file); }
+    fileInput.value = '';
+  });
+  saveBtn.addEventListener('click', onSave);
   exportBtn.addEventListener('click', onExport);
   resetBtn.addEventListener('click', () => { nodes = []; links = []; selected = null; linking = null; selectedLink=null; render(); restart(); });
-  fitBtn.addEventListener('click', fitGraph);
+  physicsBtn.addEventListener('click', (e) => { e.stopPropagation(); physicsDropdown.classList.toggle('open'); });
+  document.addEventListener('click', (e) => { if (!physicsDropdown.contains(e.target)) physicsDropdown.classList.remove('open'); });
   if (boostRange){
     boostRange.addEventListener('input', ()=>{
       degreeBoost = +boostRange.value;
@@ -411,6 +500,16 @@
       updateSpread();
     });
   }
+
+  colorSchemeSelect.addEventListener('change', () => {
+    const interp = colorSchemes[colorSchemeSelect.value];
+    if (interp) { color = d3.scaleSequential(interp).domain(color.domain()); render(); }
+  });
+
+  spacingSelect.addEventListener('change', () => {
+    spacingMode = spacingSelect.value;
+    updateSpread();
+  });
 
   applyBtn.addEventListener('click', applyInspectorChanges);
   notesInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && (e.metaKey||e.ctrlKey)){ e.preventDefault(); applyInspectorChanges(); } });
@@ -543,13 +642,25 @@
   function render(){
     recalcDegrees();
 
+    // Precompute neighbor set for selection highlighting
+    const neighborSet = new Set();
+    if (selected) {
+      for (const id of neighborsOf(selected)) neighborSet.add(id);
+    }
+
     // LINKS (main visible lines)
     const linkSel = linkLayer.selectAll('line.link').data(links, d => linkKey(nodeName(d.source), nodeName(d.target)));
     linkSel.exit().remove();
     const linkEnter = linkSel.enter().append('line').attr('class','link')
       .attr('stroke', '#64748b').attr('stroke-opacity', 0.9).attr('stroke-width', 2);
     linkEnter.merge(linkSel)
-      .classed('highlight', d => selectedLink && linkId(d) === linkId(selectedLink));
+      .classed('highlight', d => selectedLink && linkId(d) === linkId(selectedLink))
+      .attr('stroke-opacity', d => {
+        if (!selected) return 0.9;
+        const s = nodeName(d.source), t = nodeName(d.target);
+        if (s === selected.id || t === selected.id) return 0.9;
+        return 0.3;
+      });
 
     // LINKS HOT AREA (large hit target for selection/deletion)
     const hotSel = linkLayer.selectAll('line.link-hot').data(links, d => linkKey(nodeName(d.source), nodeName(d.target)));
@@ -597,7 +708,26 @@
       .attr('width', d => d.w)
       .attr('height', d => d.h)
       .attr('fill', d => color(d.degree || 0))
-      .attr('fill-opacity', 0.95);
+      .attr('fill-opacity', d => {
+        if (!selected) return 0.95;
+        if (d.id === selected.id) return 1;
+        if (neighborSet.has(d.id)) return 0.95;
+        return 0.7;
+      })
+      .attr('filter', d => {
+        if (!selected) return 'url(#glow)';
+        if (d.id === selected.id) return 'url(#glow-selected)';
+        if (neighborSet.has(d.id)) return 'url(#glow-neighbor)';
+        return 'none';
+      });
+
+    // Dim non-selected, non-neighbor node groups (affects text too)
+    nodeMerge.style('opacity', d => {
+      if (!selected) return 1;
+      if (d.id === selected.id) return 1;
+      if (neighborSet.has(d.id)) return 0.85;
+      return 0.7;
+    });
 
     // Update foreignObject for HTML content (centered in node)
     nodeMerge.select('foreignObject.node-html-wrap')
@@ -699,9 +829,8 @@
   // Click background to clear selection
   svg.on('click', (e) => { if (e.target === svg.node()) { selected = null; selectedLink = null; updateInspector(); render(); }});
 
-  // Import / Export
-  async function onExport(){
-    // Produce a clean undirected set (no duplicates)
+  // Import / Export / Save
+  function buildExportBlob(){
     const uniq = new Set();
     const outLinks = [];
     for (const l of links){
@@ -713,29 +842,45 @@
       nodes: nodes.map(n => ({ id: n.id, x: n.x, y: n.y, ...(n.notes ? { notes: n.notes } : {}) })),
       links: outLinks
     };
-    const blob = new Blob([JSON.stringify(out, null, 2)], {type: 'application/json'});
+    return new Blob([JSON.stringify(out, null, 2)], {type: 'application/json'});
+  }
 
-    // Use File System Access API if available (allows choosing directory and filename)
+  async function onSave(){
+    const blob = buildExportBlob();
+    // If we have a file handle from import, write directly to it
+    if (importFileHandle) {
+      try {
+        const writable = await importFileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        // Handle lost/revoked: fall through to Export behavior
+        console.warn('Could not save to original file, falling back to Export', err);
+      }
+    }
+    // No handle — same as Export
+    await onExport();
+  }
+
+  async function onExport(){
+    const blob = buildExportBlob();
     if ('showSaveFilePicker' in window) {
       try {
         const handle = await window.showSaveFilePicker({
           suggestedName: 'mindmap.json',
-          types: [{
-            description: 'JSON Files',
-            accept: { 'application/json': ['.json'] }
-          }]
+          types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
         });
+        importFileHandle = handle; // remember for future Save
         const writable = await handle.createWritable();
         await writable.write(blob);
         await writable.close();
         return;
       } catch (err) {
-        if (err.name === 'AbortError') return; // User cancelled
-        // Fall through to legacy method
+        if (err.name === 'AbortError') return;
       }
     }
-
-    // Fallback for browsers without File System Access API
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'mindmap.json'; a.click();
@@ -754,9 +899,7 @@
     return null;
   }
 
-  async function onImport(e){
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function loadFile(file){
     try {
       const text = await file.text();
       const data = JSON.parse(text);
@@ -797,8 +940,6 @@
     } catch(err){
       console.error(err);
       alert('Failed to import JSON: ' + (err?.message || err));
-    } finally {
-      fileInput.value = '';
     }
   }
 
